@@ -33,7 +33,7 @@
 
     /* ヘッダー */
     header {
-      background: linear-gradient(135deg, var(--nebuta-red) 0%, #8b0000 100%);
+      background: linear-gradient(180deg, #c0392b 0%, #1a0a00 100%);
       padding: 10px 16px;
       display: flex;
       align-items: center;
@@ -395,8 +395,7 @@
 <body>
 
 <header>
-  <h1>🏮 青森ねぶたマップ</h1>
-  <span class="count-badge" id="count-badge">20スポット</span>
+  <h1>青森ねぶたマップ</h1>
 </header>
 
 <div id="map"></div>
@@ -461,8 +460,8 @@ const SPOTS = [
 
 // 地図初期化
 const map = L.map('map', {
-  center: [40.78, 140.68],
-  zoom: 11,
+  center: [40.8228, 140.7507],
+  zoom: 15,
   zoomControl: false
 });
 
