@@ -1,625 +1,479 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#c0392b" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="ねぶたマップ" />
-  <title>🏮 青森ねぶたマップ</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nebuta Map - ねぶたマップ</title>
+<meta name="description" content="ねぶたの設置場所がわかる地図アプリ">
+<meta name="theme-color" content="#c0392b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --primary: #c0392b;
+    --primary-dark: #962d22;
+    --accent: #f39c12;
+    --bg: #ffffff;
+    --text: #2c3e50;
+    --muted: #7f8c8d;
+    --shadow: 0 2px 12px rgba(0,0,0,.18);
+    --radius: 14px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    color: var(--text);
+  }
+  #map { position: fixed; inset: 0; z-index: 1; }
 
-    :root {
-      --nebuta-red: #c0392b;
-      --nebuta-orange: #e67e22;
-      --nebuta-gold: #f39c12;
-      --nebuta-dark: #1a0a00;
-      --nebuta-panel: rgba(26, 10, 0, 0.92);
-    }
+  /* ===== Header ===== */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px 10px;
+    display: flex; gap: 8px; align-items: center;
+    pointer-events: none;
+  }
+  header > * { pointer-events: auto; }
+  .brand {
+    background: var(--primary); color: #fff;
+    padding: 8px 14px; border-radius: var(--radius);
+    font-weight: 700; font-size: 15px; white-space: nowrap;
+    box-shadow: var(--shadow); display: flex; align-items: center; gap: 6px;
+  }
+  .searchbox {
+    flex: 1; display: flex; align-items: center;
+    background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 0 10px; height: 40px; min-width: 0;
+  }
+  .searchbox input {
+    border: 0; outline: 0; flex: 1; font-size: 15px; min-width: 0; background: transparent;
+  }
+  .searchbox .clear-btn { border: 0; background: none; font-size: 16px; color: var(--muted); cursor: pointer; display: none; }
 
-    body {
-      font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
-      background: var(--nebuta-dark);
-      color: #fff;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  /* ===== Category filter chips ===== */
+  .chips {
+    position: fixed; z-index: 1000; left: 0; right: 0;
+    top: calc(env(safe-area-inset-top, 0px) + 58px);
+    display: flex; gap: 6px; padding: 4px 12px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto; border: 0; cursor: pointer;
+    background: var(--bg); color: var(--text);
+    padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    box-shadow: var(--shadow);
+  }
+  .chip.active { background: var(--primary); color: #fff; }
 
-    /* ヘッダー */
-    header {
-      background: linear-gradient(180deg, #c0392b 0%, #1a0a00 100%);
-      padding: 10px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
-      z-index: 1000;
-      flex-shrink: 0;
-    }
+  /* ===== FABs ===== */
+  .fabs {
+    position: fixed; right: 12px; bottom: calc(var(--safe-bottom) + 24px);
+    z-index: 1000; display: flex; flex-direction: column; gap: 10px;
+  }
+  .fab {
+    width: 48px; height: 48px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--bg); color: var(--text); font-size: 20px;
+    box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center;
+  }
+  .fab.primary { background: var(--primary); color: #fff; }
 
-    header h1 {
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.4);
-      flex: 1;
-    }
+  /* ===== Detail panel (bottom sheet) ===== */
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1100;
+    background: var(--bg); border-radius: 18px 18px 0 0;
+    box-shadow: 0 -4px 24px rgba(0,0,0,.25);
+    transform: translateY(110%); transition: transform .28s ease;
+    max-height: 70vh; overflow-y: auto;
+    padding-bottom: calc(var(--safe-bottom) + 16px);
+  }
+  .sheet.open { transform: translateY(0); }
+  .sheet-grab { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 10px auto 0; }
+  .sheet-photos {
+    display: flex; gap: 6px; overflow-x: auto; padding: 10px 10px 0;
+    -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;
+  }
+  .sheet-photos img {
+    height: 190px; max-width: 85%; object-fit: cover; border-radius: 10px;
+    flex: 0 0 auto; scroll-snap-align: center;
+    background: linear-gradient(135deg, #c0392b, #f39c12);
+  }
+  .sheet-photo-fallback {
+    width: 100%; height: 150px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #c0392b 0%, #e74c3c 50%, #f39c12 100%);
+    font-size: 56px; margin-top: 10px;
+  }
+  .sheet-body { padding: 14px 18px 4px; }
+  .sheet-cat {
+    display: inline-block; font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--accent); padding: 3px 10px; border-radius: 999px; margin-bottom: 6px;
+  }
+  .sheet-title { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .sheet-desc { font-size: 14px; line-height: 1.7; color: #444; white-space: pre-wrap; }
+  .sheet-meta { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .sheet-actions { display: flex; gap: 8px; padding: 12px 18px 0; }
+  .btn {
+    flex: 1; text-align: center; padding: 11px; border-radius: 10px; border: 0;
+    font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none;
+  }
+  .btn.solid { background: var(--primary); color: #fff; }
+  .btn.outline { background: #f4f4f4; color: var(--text); }
 
-    header .count-badge {
-      background: var(--nebuta-gold);
-      color: var(--nebuta-dark);
-      font-size: 12px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 12px;
-    }
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 90px); z-index: 2000;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(40,40,40,.92); color: #fff; padding: 10px 18px;
+    border-radius: 999px; font-size: 13px; opacity: 0; transition: all .25s;
+    pointer-events: none; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* 地図 */
-    #map {
-      flex: 1;
-      width: 100%;
-      background: #1a0a00;
-    }
+  /* ===== Marker ===== */
+  .nebuta-pin { filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+  .leaflet-popup-content-wrapper { border-radius: 12px; }
 
-    /* 現在地ボタン */
-    .locate-btn {
-      position: absolute;
-      bottom: 20px;
-      right: 16px;
-      z-index: 900;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--nebuta-red);
-      color: white;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.15s, background 0.15s;
-    }
-    .locate-btn:active { transform: scale(0.92); background: #8b0000; }
+  #kmlInput { display: none; }
 
-    /* スポット詳細パネル */
-    .spot-panel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 950;
-      background: var(--nebuta-panel);
-      border-radius: 20px 20px 0 0;
-      padding: 0;
-      transform: translateY(100%);
-      transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-      max-height: 75dvh;
-      display: flex;
-      flex-direction: column;
-      backdrop-filter: blur(12px);
-      border-top: 2px solid var(--nebuta-red);
-    }
-
-    .spot-panel.open {
-      transform: translateY(0);
-    }
-
-    .panel-handle {
-      width: 40px;
-      height: 4px;
-      background: rgba(255,255,255,0.3);
-      border-radius: 2px;
-      margin: 12px auto 0;
-      flex-shrink: 0;
-    }
-
-    .panel-header {
-      padding: 12px 20px 8px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
-    .panel-title {
-      flex: 1;
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1.3;
-      color: #fff;
-    }
-
-    .panel-close {
-      width: 32px;
-      height: 32px;
-      background: rgba(255,255,255,0.15);
-      border: none;
-      border-radius: 50%;
-      color: white;
-      font-size: 18px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      margin-top: -2px;
-    }
-
-    .panel-photo-count {
-      font-size: 12px;
-      color: var(--nebuta-gold);
-      padding: 0 20px 8px;
-      flex-shrink: 0;
-    }
-
-    /* 写真スワイプエリア */
-    .photos-scroll {
-      overflow-x: auto;
-      overflow-y: hidden;
-      display: flex;
-      gap: 10px;
-      padding: 0 20px 16px;
-      flex-shrink: 0;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-    }
-    .photos-scroll::-webkit-scrollbar { display: none; }
-
-    .photo-item {
-      scroll-snap-align: start;
-      flex-shrink: 0;
-      width: calc(100vw - 56px);
-      max-width: 340px;
-      height: 200px;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #333;
-      position: relative;
-    }
-
-    .photo-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .photo-item .photo-num {
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      font-size: 11px;
-      padding: 2px 7px;
-      border-radius: 10px;
-    }
-
-    .no-photo {
-      width: calc(100vw - 56px);
-      max-width: 340px;
-      height: 200px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.05);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 48px;
-      flex-shrink: 0;
-    }
-
-    /* マップ情報パネル下部 */
-    .panel-info {
-      padding: 0 20px 20px;
-      overflow-y: auto;
-      flex-shrink: 0;
-    }
-
-    .navi-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 12px;
-      background: linear-gradient(135deg, var(--nebuta-red), var(--nebuta-orange));
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      margin-top: 4px;
-    }
-
-    /* カスタムマーカー */
-    .nebuta-marker {
-      width: 36px;
-      height: 36px;
-      background: var(--nebuta-red);
-      border: 3px solid #fff;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-      cursor: pointer;
-      transition: transform 0.2s, background 0.2s;
-    }
-
-    .nebuta-marker-inner {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transform: rotate(45deg);
-      font-size: 16px;
-    }
-
-    .nebuta-marker.active {
-      background: var(--nebuta-gold);
-      transform: rotate(-45deg) scale(1.2);
-    }
-
-    /* リストビュー */
-    .list-btn {
-      position: absolute;
-      bottom: 80px;
-      right: 16px;
-      z-index: 900;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(26, 10, 0, 0.9);
-      color: white;
-      border: 2px solid var(--nebuta-gold);
-      font-size: 18px;
-      cursor: pointer;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform 0.15s;
-    }
-    .list-btn:active { transform: scale(0.92); }
-
-    /* スポットリストパネル */
-    .list-panel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 960;
-      background: var(--nebuta-panel);
-      border-radius: 20px 20px 0 0;
-      transform: translateY(100%);
-      transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-      max-height: 80dvh;
-      display: flex;
-      flex-direction: column;
-      backdrop-filter: blur(12px);
-      border-top: 2px solid var(--nebuta-gold);
-    }
-
-    .list-panel.open {
-      transform: translateY(0);
-    }
-
-    .list-panel-header {
-      padding: 16px 20px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .list-panel-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--nebuta-gold);
-    }
-
-    .list-scroll {
-      overflow-y: auto;
-      flex: 1;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .list-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .list-item:active { background: rgba(255,255,255,0.08); }
-
-    .list-thumb {
-      width: 52px;
-      height: 52px;
-      border-radius: 8px;
-      overflow: hidden;
-      flex-shrink: 0;
-      background: rgba(255,255,255,0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-    }
-
-    .list-thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .list-item-info { flex: 1; min-width: 0; }
-    .list-item-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .list-item-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
-
-    .list-item-arrow { color: rgba(255,255,255,0.3); font-size: 14px; flex-shrink: 0; }
-
-    /* オーバーレイ */
-    .overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 940;
-      background: transparent;
-      display: none;
-    }
-    .overlay.active { display: block; }
-
-    /* Leafletポップアップ上書き */
-    .leaflet-popup-content-wrapper {
-      background: var(--nebuta-dark) !important;
-      border: 1px solid var(--nebuta-red) !important;
-      border-radius: 10px !important;
-      color: white !important;
-    }
-    .leaflet-popup-tip { background: var(--nebuta-dark) !important; }
-    .leaflet-popup-content { font-size: 13px; font-weight: 600; margin: 8px 12px !important; }
-  </style>
+  @media (min-width: 768px) {
+    .sheet { left: auto; right: 16px; bottom: 16px; width: 380px; border-radius: 18px; max-height: 75vh; }
+    .fabs { bottom: 24px; right: 420px; }
+  }
+</style>
 </head>
 <body>
 
-<header>
-  <h1>青森ねぶたマップ</h1>
-</header>
-
 <div id="map"></div>
 
-<!-- 現在地ボタン -->
-<button class="locate-btn" onclick="locateMe()" title="現在地">📍</button>
-
-<!-- リストボタン -->
-<button class="list-btn" onclick="toggleList()" title="一覧">☰</button>
-
-<!-- オーバーレイ -->
-<div class="overlay" id="overlay" onclick="closeAll()"></div>
-
-<!-- スポット詳細パネル -->
-<div class="spot-panel" id="spotPanel">
-  <div class="panel-handle"></div>
-  <div class="panel-header">
-    <div class="panel-title" id="panelTitle">スポット名</div>
-    <button class="panel-close" onclick="closePanel()">✕</button>
+<header>
+  <div class="brand">🏮 Nebuta Map</div>
+  <div class="searchbox">
+    <span style="color:var(--muted);margin-right:6px">🔍</span>
+    <input id="searchInput" type="search" placeholder="ねぶたを検索…" autocomplete="off">
+    <button class="clear-btn" id="clearSearch">✕</button>
   </div>
-  <div class="panel-photo-count" id="panelPhotoCount"></div>
-  <div class="photos-scroll" id="photosScroll"></div>
-  <div class="panel-info">
-    <a class="navi-btn" id="naviBtn" href="#" target="_blank">
-      🗺 Googleマップでナビ
-    </a>
+</header>
+
+<div class="chips" id="chips"></div>
+
+<div class="fabs">
+  <button class="fab" id="importBtn" title="KML/KMZをインポート">📂</button>
+  <button class="fab" id="fitBtn" title="全体表示">🗺️</button>
+  <button class="fab primary" id="locateBtn" title="現在地">📍</button>
+</div>
+<input type="file" id="kmlInput" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz">
+
+<div class="sheet" id="sheet">
+  <div class="sheet-grab"></div>
+  <div id="sheetPhotoArea"></div>
+  <div class="sheet-body">
+    <span class="sheet-cat" id="sheetCat"></span>
+    <div class="sheet-title" id="sheetTitle"></div>
+    <div class="sheet-desc" id="sheetDesc"></div>
+    <div class="sheet-meta" id="sheetMeta"></div>
+  </div>
+  <div class="sheet-actions">
+    <a class="btn solid" id="navBtn" target="_blank" rel="noopener">経路案内</a>
+    <button class="btn outline" id="closeSheet">閉じる</button>
   </div>
 </div>
 
-<!-- スポット一覧パネル -->
-<div class="list-panel" id="listPanel">
-  <div class="list-panel-header">
-    <span class="list-panel-title">📋 全スポット一覧（20件）</span>
-    <button class="panel-close" onclick="toggleList()">✕</button>
-  </div>
-  <div class="list-scroll" id="listScroll"></div>
-</div>
+<div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data.js"></script>
 <script>
-const SPOTS = [
-  {"name": "新青森駅", "lat": 40.8281932, "lon": 140.6934715, "images": ["imgs/shin-aomori-station-0.jpg", "imgs/shin-aomori-station-1.jpg", "imgs/shin-aomori-station-2.jpg", "imgs/shin-aomori-station-3.jpg", "imgs/shin-aomori-station-4.jpg", "imgs/shin-aomori-station-5.jpg"]},
-  {"name": "青森空港", "lat": 40.7354587, "lon": 140.6904126, "images": ["imgs/aomori-airport-0.jpg"]},
-  {"name": "貝焼酒場 樹", "lat": 40.601679, "lon": 140.4713438, "images": ["imgs/kaiyaki-sakaba-ki-0.jpg"]},
-  {"name": "サンロード青森", "lat": 40.8070722, "lon": 140.7533, "images": ["imgs/sunroad-aomori-0.jpg"]},
-  {"name": "青森まちなかおんせん", "lat": 40.824661, "lon": 140.7353734, "images": ["imgs/aomori-machinaka-onsen-0.jpg", "imgs/aomori-machinaka-onsen-1.jpg"]},
-  {"name": "東奥日報新町ビル New'sホール", "lat": 40.8257181, "lon": 140.7405285, "images": ["imgs/tohoku-nippo-news-hall-0.jpg", "imgs/tohoku-nippo-news-hall-1.jpg"]},
-  {"name": "青森競輪場", "lat": 40.7971385, "lon": 140.6645416, "images": ["imgs/aomori-keirin-0.jpg", "imgs/aomori-keirin-1.jpg", "imgs/aomori-keirin-2.jpg"]},
-  {"name": "天然温泉 淡雪の湯 ドーミーイン青森", "lat": 40.8260454, "lon": 140.7417244, "images": ["imgs/dormy-inn-aomori-0.jpg", "imgs/dormy-inn-aomori-1.jpg", "imgs/dormy-inn-aomori-2.jpg", "imgs/dormy-inn-aomori-3.jpg", "imgs/dormy-inn-aomori-4.jpg", "imgs/dormy-inn-aomori-5.jpg"]},
-  {"name": "ホテル青森", "lat": 40.8253693, "lon": 140.7551059, "images": ["imgs/hotel-aomori-0.jpg", "imgs/hotel-aomori-1.jpg"]},
-  {"name": "病厄除守護神 廣田神社", "lat": 40.822581, "lon": 140.742681, "images": ["imgs/hirota-shrine-0.jpg", "imgs/hirota-shrine-1.jpg"]},
-  {"name": "お食事処 おさない", "lat": 40.8279769, "lon": 140.7359841, "images": ["imgs/restaurant-osanai-0.jpg"]},
-  {"name": "津軽じょっぱり漁屋酒場 青森本町店", "lat": 40.8256843, "lon": 140.7467049, "images": ["imgs/tsugaru-joppari-0.jpg", "imgs/tsugaru-joppari-1.jpg"]},
-  {"name": "㈱番地銘石 本店", "lat": 40.8241554, "lon": 140.7555503, "images": ["imgs/banchi-meiseki-0.jpg"]},
-  {"name": "弘前駅", "lat": 40.5991512, "lon": 140.4852197, "images": ["imgs/hirosaki-station-0.jpg", "imgs/hirosaki-station-1.jpg"]},
-  {"name": "イオンモールつがる柏", "lat": 40.8020367, "lon": 140.4168295, "images": ["imgs/aeon-mall-tsugaru-0.jpg", "imgs/aeon-mall-tsugaru-1.jpg", "imgs/aeon-mall-tsugaru-2.jpg", "imgs/aeon-mall-tsugaru-3.jpg"]},
-  {"name": "NTT青森支店前", "lat": 40.823571, "lon": 140.7513679, "images": ["imgs/ntt-aomori-0.jpg", "imgs/ntt-aomori-1.jpg", "imgs/ntt-aomori-2.jpg"]},
-  {"name": "協同組合タッケン", "lat": 40.8216192, "lon": 140.7506387, "images": ["imgs/takken-0.jpg", "imgs/takken-1.jpg"]},
-  {"name": "ふく郎", "lat": 40.8280501, "lon": 140.740048, "images": ["imgs/fukuro-0.jpg", "imgs/fukuro-1.jpg", "imgs/fukuro-2.jpg", "imgs/fukuro-3.jpg", "imgs/fukuro-4.jpg"]},
-  {"name": "ペットショップCoo&RIKU 青森店", "lat": 40.8015832, "lon": 140.757408, "images": ["imgs/coo-riku-aomori-0.jpg", "imgs/coo-riku-aomori-1.jpg"]},
-  {"name": "スーパーホテル青森", "lat": 40.823651, "lon": 140.7506941, "images": ["imgs/super-hotel-aomori-0.jpg"]}
+/* =====================================================
+   Nebuta Map
+   ===================================================== */
+
+// ---------- サンプルデータ（後でMy MapsのKMLで置き換え可能） ----------
+const SAMPLE_NEBUTA = [
+  { id: "s1", name: "ねぶたの家 ワ・ラッセ", cat: "常設展示",
+    desc: "大型ねぶたを年中展示する観光施設。祭り本番の大賞受賞ねぶたも見られる。",
+    lat: 40.82844, lng: 140.73452, photo: null },
+  { id: "s2", name: "青森県観光物産館アスパム前", cat: "常設展示",
+    desc: "アスパム前広場に展示される中型ねぶた。夜はライトアップあり。",
+    lat: 40.83128, lng: 140.74037, photo: null },
+  { id: "s3", name: "ラッセランド 制作小屋A", cat: "制作小屋",
+    desc: "青い海公園内のねぶた制作小屋。6〜7月は制作風景を見学できる。",
+    lat: 40.83050, lng: 140.73780, photo: null },
+  { id: "s4", name: "ラッセランド 制作小屋B", cat: "制作小屋",
+    desc: "ねぶた師による大型ねぶたの制作現場。写真撮影は係員の指示に従うこと。",
+    lat: 40.83090, lng: 140.73880, photo: null },
+  { id: "s5", name: "新町通り 展示スポット", cat: "市内展示",
+    desc: "商店街アーケードに飾られた小型ねぶた。買い物がてら楽しめる。",
+    lat: 40.82690, lng: 140.73580, photo: null },
+  { id: "s6", name: "青森駅前公園", cat: "市内展示",
+    desc: "駅を出てすぐの公園に設置された金魚ねぶたのオブジェ。",
+    lat: 40.82780, lng: 140.73400, photo: null },
+  { id: "s7", name: "国道4号 運行コース起点", cat: "運行コース",
+    desc: "ねぶた祭本番の運行コース起点付近。祭り期間は観覧席が設置される。",
+    lat: 40.82540, lng: 140.74100, photo: null },
+  { id: "s8", name: "八甲通り 観覧ポイント", cat: "運行コース",
+    desc: "跳人と大型ねぶたを間近に見られる人気観覧スポット。",
+    lat: 40.82620, lng: 140.74440, photo: null },
 ];
 
-// 地図初期化
-const map = L.map('map', {
-  center: [40.8228, 140.7507],
-  zoom: 15,
-  zoomControl: false
-});
+// ---------- 状態 ----------
+// data.js があればそれを基本データに、なければサンプルを使用
+const BASE_DATA = (window.NEBUTA_DATA && window.NEBUTA_DATA.length) ? window.NEBUTA_DATA : SAMPLE_NEBUTA;
+const LS_KEY = "nebuta-map-imported-v1";
+let nebutaList = [...BASE_DATA];
+let activeCat = "すべて";
+let searchTerm = "";
+const markers = new Map(); // id -> L.Marker
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
-  maxZoom: 19
+// インポート済みデータを復元
+try {
+  const saved = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+  if (saved && Array.isArray(saved.items) && saved.items.length) {
+    nebutaList = saved.replace ? saved.items : [...BASE_DATA, ...saved.items];
+  }
+} catch (e) { /* ignore */ }
+
+// ---------- 地図 ----------
+const map = L.map("map", { zoomControl: false }).setView([40.8285, 140.7385], 15);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 }).addTo(map);
+L.control.zoom({ position: "bottomleft" }).addTo(map);
 
-// ズームコントロールを左下に
-L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
-// マーカー作成
-let activeMarker = null;
-
-function createMarkerIcon(spot, active = false) {
-  const img = spot.images.length > 0
-    ? `<img src="${spot.images[0]}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.outerHTML='<span style=\\'font-size:18px;\\'>🏮</span>'">`
-    : '<span style="font-size:18px;">🏮</span>';
-  const size = active ? 52 : 44;
-  const borderColor = active ? '#f39c12' : '#c0392b';
-  const boxShadow = active
-    ? '0 0 0 3px rgba(243,156,18,0.5), 0 4px 14px rgba(0,0,0,0.6)'
-    : '0 3px 8px rgba(0,0,0,0.45)';
+// ---------- ピンアイコン ----------
+const CAT_COLORS = {
+  "常設展示": "#c0392b",
+  "制作小屋": "#d35400",
+  "市内展示": "#8e44ad",
+  "運行コース": "#2980b9",
+  "青森エリア": "#c0392b",
+  "弘前エリア": "#8e44ad",
+  "つがるエリア": "#2980b9",
+};
+function pinIcon(cat) {
+  const color = CAT_COLORS[cat] || "#16a085";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="46" viewBox="0 0 34 46">
+    <path d="M17 0C7.6 0 0 7.6 0 17c0 12 17 29 17 29s17-17 17-29C34 7.6 26.4 0 17 0z" fill="${color}"/>
+    <circle cx="17" cy="16" r="11" fill="#fff"/>
+    <text x="17" y="21" font-size="14" text-anchor="middle">🏮</text>
+  </svg>`;
   return L.divIcon({
-    className: '',
-    html: `<div style="
-      width:${size}px;height:${size}px;
-      border-radius:50% 50% 50% 4px;
-      transform:rotate(-45deg);
-      border:3px solid ${borderColor};
-      box-shadow:${boxShadow};
-      background:#333;
-      overflow:hidden;
-      display:flex;align-items:center;justify-content:center;
-    "><div style="transform:rotate(45deg);width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;overflow:hidden;">${img}</div></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size * 0.28, size],
-    popupAnchor: [size * 0.22, -(size + 4)]
+    className: "nebuta-pin",
+    html: svg,
+    iconSize: [34, 46],
+    iconAnchor: [17, 46],
+    popupAnchor: [0, -44],
   });
 }
 
-const markers = SPOTS.map((spot, i) => {
-  const marker = L.marker([spot.lat, spot.lon], {
-    icon: createMarkerIcon(spot, false)
-  }).addTo(map);
+// ---------- レンダリング ----------
+const markerLayer = L.layerGroup().addTo(map);
 
-  marker.on('click', () => openSpot(spot, marker));
-  return marker;
-});
+function visibleItems() {
+  return nebutaList.filter((n) => {
+    const catOk = activeCat === "すべて" || n.cat === activeCat;
+    const q = searchTerm.trim().toLowerCase();
+    const qOk = !q || (n.name + " " + (n.desc || "") + " " + (n.cat || "")).toLowerCase().includes(q);
+    return catOk && qOk;
+  });
+}
 
-// スポットパネルを開く
-function openSpot(spot, marker) {
-  // マーカーをアクティブに
-  if (activeMarker && activeMarker._spot) {
-    activeMarker.setIcon(createMarkerIcon(activeMarker._spot, false));
+function render() {
+  markerLayer.clearLayers();
+  markers.clear();
+  for (const n of visibleItems()) {
+    const m = L.marker([n.lat, n.lng], { icon: pinIcon(n.cat) })
+      .on("click", () => openSheet(n));
+    m.bindTooltip(n.name, { direction: "top", offset: [0, -44] });
+    markerLayer.addLayer(m);
+    markers.set(n.id, m);
   }
-  marker._spot = spot;
-  marker.setIcon(createMarkerIcon(spot, true));
-  activeMarker = marker;
+  renderChips();
+}
 
-  // パネルを更新
-  document.getElementById('panelTitle').textContent = spot.name;
-  document.getElementById('panelPhotoCount').textContent =
-    spot.images.length > 0 ? `📷 ${spot.images.length}枚の写真` : '';
+function categories() {
+  return ["すべて", ...new Set(nebutaList.map((n) => n.cat).filter(Boolean))];
+}
 
-  // 写真
-  const scroll = document.getElementById('photosScroll');
-  scroll.innerHTML = '';
-  if (spot.images.length > 0) {
-    spot.images.forEach((url, idx) => {
-      const div = document.createElement('div');
-      div.className = 'photo-item';
-      div.innerHTML = `<img src="${url}" onerror="this.parentNode.innerHTML='<span style=\'font-size:48px;display:flex;align-items:center;justify-content:center;height:100%\'>🏮</span>'">
-        ${spot.images.length > 1 ? `<span class="photo-num">${idx+1}/${spot.images.length}</span>` : ''}`;
-      scroll.appendChild(div);
-    });
+function renderChips() {
+  const el = document.getElementById("chips");
+  el.innerHTML = "";
+  for (const cat of categories()) {
+    const b = document.createElement("button");
+    b.className = "chip" + (cat === activeCat ? " active" : "");
+    const count = cat === "すべて" ? nebutaList.length : nebutaList.filter((n) => n.cat === cat).length;
+    b.textContent = `${cat} (${count})`;
+    b.onclick = () => { activeCat = cat; render(); };
+    el.appendChild(b);
+  }
+}
+
+// ---------- 詳細パネル ----------
+const sheet = document.getElementById("sheet");
+function openSheet(n) {
+  document.getElementById("sheetCat").textContent = n.cat || "ねぶた";
+  document.getElementById("sheetTitle").textContent = n.name;
+  document.getElementById("sheetDesc").textContent = n.desc || "";
+  document.getElementById("sheetMeta").textContent = `📌 ${n.lat.toFixed(5)}, ${n.lng.toFixed(5)}`;
+  const photoArea = document.getElementById("sheetPhotoArea");
+  const photos = n.photos || (n.photo ? [n.photo] : []);
+  if (photos.length) {
+    photoArea.innerHTML = `<div class="sheet-photos">` +
+      photos.map((p) => `<img src="${p}" alt="${n.name}" loading="lazy" onerror="this.remove()">`).join("") +
+      `</div>`;
   } else {
-    scroll.innerHTML = '<div class="no-photo">🏮</div>';
+    photoArea.innerHTML = `<div class="sheet-photo-fallback">🏮</div>`;
   }
-  scroll.scrollLeft = 0;
-
-  // ナビボタン
-  document.getElementById('naviBtn').href =
-    `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lon}`;
-
-  // パネルを表示
-  document.getElementById('spotPanel').classList.add('open');
-  document.getElementById('overlay').classList.add('active');
-
-  // 地図を中央に
-  map.panTo([spot.lat, spot.lon], { animate: true });
+  document.getElementById("navBtn").href =
+    `https://www.google.com/maps/dir/?api=1&destination=${n.lat},${n.lng}`;
+  sheet.classList.add("open");
+  map.panTo([n.lat, n.lng]);
 }
+document.getElementById("closeSheet").onclick = () => sheet.classList.remove("open");
+map.on("click", () => sheet.classList.remove("open"));
 
-function closePanel() {
-  document.getElementById('spotPanel').classList.remove('open');
-  document.getElementById('overlay').classList.remove('active');
-  if (activeMarker) {
-    activeMarker.setIcon(createMarkerIcon(activeMarker._spot || {images:[]}, false));
-    activeMarker = null;
+// ---------- 検索 ----------
+const searchInput = document.getElementById("searchInput");
+const clearBtn = document.getElementById("clearSearch");
+searchInput.addEventListener("input", () => {
+  searchTerm = searchInput.value;
+  clearBtn.style.display = searchTerm ? "block" : "none";
+  render();
+});
+clearBtn.onclick = () => { searchInput.value = ""; searchTerm = ""; clearBtn.style.display = "none"; render(); };
+
+// ---------- 現在地 ----------
+let meMarker = null;
+document.getElementById("locateBtn").onclick = () => {
+  if (!navigator.geolocation) return toast("この端末では位置情報が使えません");
+  toast("現在地を取得中…");
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      if (meMarker) meMarker.remove();
+      meMarker = L.circleMarker([lat, lng], {
+        radius: 9, color: "#fff", weight: 3, fillColor: "#2980b9", fillOpacity: 1,
+      }).addTo(map).bindTooltip("現在地");
+      map.setView([lat, lng], 16);
+    },
+    () => toast("現在地を取得できませんでした"),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+};
+
+// ---------- 全体表示 ----------
+document.getElementById("fitBtn").onclick = () => {
+  const items = visibleItems();
+  if (!items.length) return;
+  map.fitBounds(L.latLngBounds(items.map((n) => [n.lat, n.lng])), { padding: [60, 60] });
+};
+
+// ---------- KML / KMZ インポート ----------
+document.getElementById("importBtn").onclick = () => document.getElementById("kmlInput").click();
+document.getElementById("kmlInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    let kmlText;
+    if (file.name.toLowerCase().endsWith(".kmz")) {
+      // KMZ = zip。JSZipを遅延読み込み
+      if (!window.JSZip) {
+        await new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const zip = await JSZip.loadAsync(file);
+      const kmlFile = Object.values(zip.files).find((f) => f.name.toLowerCase().endsWith(".kml"));
+      if (!kmlFile) throw new Error("KMZ内にKMLが見つかりません");
+      kmlText = await kmlFile.async("string");
+    } else {
+      kmlText = await file.text();
+    }
+    const imported = parseKML(kmlText);
+    if (!imported.length) return toast("ピンが見つかりませんでした");
+
+    const replace = confirm(
+      `${imported.length}件のピンを読み込みました。\n\nOK = 既存データを置き換える\nキャンセル = 既存データに追加する`
+    );
+    nebutaList = replace ? imported : [...BASE_DATA, ...imported];
+    localStorage.setItem(LS_KEY, JSON.stringify({ replace, items: imported }));
+    activeCat = "すべて";
+    render();
+    document.getElementById("fitBtn").click();
+    toast(`✅ ${imported.length}件をインポートしました`);
+  } catch (err) {
+    console.error(err);
+    toast("読み込みに失敗しました: " + err.message);
   }
-}
-
-// リスト
-let listOpen = false;
-function toggleList() {
-  listOpen = !listOpen;
-  document.getElementById('listPanel').classList.toggle('open', listOpen);
-  document.getElementById('overlay').classList.toggle('active', listOpen);
-}
-
-// リスト初期化
-const listScroll = document.getElementById('listScroll');
-SPOTS.forEach((spot, i) => {
-  const div = document.createElement('div');
-  div.className = 'list-item';
-  const thumb = spot.images.length > 0
-    ? `<img src="${spot.images[0]}" onerror="this.outerHTML='🏮'">`
-    : '🏮';
-  div.innerHTML = `
-    <div class="list-thumb">${thumb}</div>
-    <div class="list-item-info">
-      <div class="list-item-name">${spot.name}</div>
-      <div class="list-item-sub">📷 ${spot.images.length}枚</div>
-    </div>
-    <div class="list-item-arrow">›</div>
-  `;
-  div.addEventListener('click', () => {
-    toggleList();
-    setTimeout(() => {
-      openSpot(spot, markers[i]);
-      map.setView([spot.lat, spot.lon], 15, { animate: true });
-    }, 300);
-  });
-  listScroll.appendChild(div);
+  e.target.value = "";
 });
 
-// オーバーレイクリックで閉じる
-function closeAll() {
-  if (listOpen) { toggleList(); return; }
-  closePanel();
+function parseKML(text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  if (doc.querySelector("parsererror")) throw new Error("KMLの形式が不正です");
+  const out = [];
+  let i = 0;
+  for (const pm of doc.querySelectorAll("Placemark")) {
+    const coordEl = pm.querySelector("Point > coordinates");
+    if (!coordEl) continue; // 線・ポリゴンはスキップ
+    const [lng, lat] = coordEl.textContent.trim().split(",").map(Number);
+    if (!isFinite(lat) || !isFinite(lng)) continue;
+
+    const name = pm.querySelector("name")?.textContent.trim() || `ねぶた ${i + 1}`;
+    let desc = pm.querySelector("description")?.textContent.trim() || "";
+    // My Mapsの写真はgx_media_links（スペース区切り）に入る
+    let photos = [];
+    for (const d of pm.querySelectorAll("ExtendedData Data")) {
+      if (d.getAttribute("name") === "gx_media_links") {
+        photos = (d.querySelector("value")?.textContent.trim() || "").split(/\s+/).filter(Boolean);
+      }
+    }
+    // descriptionのHTMLをテキスト化（画像はフォールバックとして回収）
+    if (desc) {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = desc;
+      if (!photos.length) photos = [...tmp.querySelectorAll("img")].map((im) => im.getAttribute("src")).filter(Boolean);
+      desc = (tmp.textContent || "").trim();
+    }
+    // フォルダ名をカテゴリとして使用
+    const folder = pm.closest("Folder");
+    let cat = folder?.querySelector(":scope > name")?.textContent.trim() || "インポート";
+    if (cat === "無題のレイヤ") cat = "インポート";
+
+    out.push({ id: "kml-" + i++, name, desc, cat, lat, lng, photos });
+  }
+  return out;
 }
 
-// 現在地
-function locateMe() {
-  map.locate({ setView: true, maxZoom: 15 });
+// ---------- トースト ----------
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
 }
-map.on('locationfound', (e) => {
-  L.circleMarker(e.latlng, {
-    radius: 10,
-    fillColor: '#3498db',
-    color: '#fff',
-    weight: 3,
-    fillOpacity: 0.9
-  }).addTo(map).bindPopup('現在地').openPopup();
-});
-map.on('locationerror', () => {
-  alert('位置情報を取得できませんでした');
-});
+
+// ---------- Service Worker (PWA) ----------
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+// 初期描画（全ピンが収まる範囲を表示）
+render();
+if (nebutaList.length) {
+  map.fitBounds(L.latLngBounds(nebutaList.map((n) => [n.lat, n.lng])), { padding: [60, 60] });
+}
 </script>
 </body>
 </html>
